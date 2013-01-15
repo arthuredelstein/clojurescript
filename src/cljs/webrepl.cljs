@@ -7,6 +7,9 @@
 (def ^:dynamic *debug* false)
 (def ^:dynamic *e nil)
 
+(def history (atom []))
+(def history-position (atom 0))
+
 (defn prompt [] (str ana/*cljs-ns* "=> "))
 
 (def append-dom)
@@ -43,6 +46,8 @@
     (reader/read-string text)))
 
 (defn postexpr [log text]
+  (swap! history conj text)
+  (reset! history-position (count @history))
   (append-dom log
     [:table
      [:tbody
@@ -72,6 +77,53 @@
  (postexpr log text)
  (ep log text))
 
+(defn handle-enter-key [log status1 status2 input]
+  (try
+    (let [form (reader/read-string (.-value input))]
+      (do
+        (pep log (.-value input))
+        (js/setTimeout #(set! (.-value input) "") 0)
+        (set! (.-visibility (.-style status1)) "visible")
+        (set! (.-visibility (.-style status2)) "hidden")
+        (set! (.-innerText (.getElementById js/document "ns")) (prompt))))
+    (catch js/Error e
+      (if (re-find #"EOF while reading" (.-message e))
+        (do
+          (set! (.-visibility (.-style status1)) "hidden")
+          (set! (.-visibility (.-style status2)) "visible"))
+        (repl-print log e "err")))))
+     
+(defn count-lines [text]
+  (count (.split text "\n")))
+     
+(defn cursor-line-number [input]
+  (let [pos (.-selectionEnd input)
+        before (.substr (.-value input) 0 pos)]
+    (dec (count-lines before))))
+
+(defn move-cursor-to-end [input]
+  (let [n (count (.-value input))]
+    (set! (.-selectionStart input) n)
+    (set! (.-selectionEnd input) n)))
+
+(defn bump-history [ev input change-fn]
+  (let [cur-hist (get @history @history-position)]
+    (when (not= cur-hist (.-value input))
+      (reset! history-position (count @history))))
+  (swap! history-position change-fn)
+  (set! (.-value input) (get @history @history-position))
+  (.preventDefault ev)
+  (move-cursor-to-end input))
+
+(defn handle-up-key [ev input]
+  (when (zero? (cursor-line-number input))
+    (bump-history ev input #(max 0 (dec %)))))
+
+(defn handle-down-key [ev input]
+  (when (= (inc (cursor-line-number input))
+           (count-lines (.-value input)))
+    (bump-history ev input #(min (inc %) (count @history)))))
+
 (set! (.-onload js/window) (fn []
   (let [log (.getElementById js/document "log")
         input (.getElementById js/document "input")
@@ -93,20 +145,11 @@
 
     (set! (.-onkeypress input)
           (fn [ev]
-            (when (== (.-keyCode (or ev event)) 13)
-              (try
-                (let [form (reader/read-string (.-value input))]
-                  (do
-                    (pep log (.-value input))
-                    (js/setTimeout #(set! (.-value input) "") 0)
-                    (set! (.-visibility (.-style status1)) "visible")
-                    (set! (.-visibility (.-style status2)) "hidden")
-                    (set! (.-innerText (.getElementById js/document "ns")) (prompt))))
-                (catch js/Error e
-                  (if (re-find #"EOF while reading" (.-message e))
-                    (do
-                      (set! (.-visibility (.-style status1)) "hidden")
-                      (set! (.-visibility (.-style status2)) "visible"))
-                    (repl-print log e "err")))))))
+            (condp == (.-keyCode (or ev event))
+              13 (handle-enter-key log status1 status2 input)
+              38 (handle-up-key ev input)
+              40 (handle-down-key ev input)
+              nil
+              )))
 
     (.focus input))))
