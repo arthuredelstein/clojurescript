@@ -7,8 +7,30 @@
 (def ^:dynamic *debug* false)
 (def ^:dynamic *e nil)
 
-(def history (atom []))
-(def history-position (atom 0))
+(def history-atom (atom {:list [] :position 0 :temp nil}))
+
+(defn current-history [history]
+  (get (:list history) (:position history) (:temp history)))
+
+(defn clip [x [min-val max-val]]
+  (max min-val (min x max-val)))
+
+(defn bump-history [history input-val inc-or-dec]
+  (let [hist-length (count (:list history))
+        edited (not= input-val (current-history history))
+        pos (if edited hist-length
+              (:position history))]
+    (-> history
+        (assoc :position
+               (clip (inc-or-dec pos)
+                     [0 hist-length]))
+        (merge (when edited {:temp input-val})))))
+
+(defn post-to-history [history text]
+  (let [hist-length (count (:list history))]
+    (-> history
+        (update-in [:list] conj text)
+        (assoc :position (inc hist-length)))))
 
 (defn prompt [] (str ana/*cljs-ns* "=> "))
 
@@ -46,8 +68,7 @@
     (reader/read-string text)))
 
 (defn postexpr [log text]
-  (swap! history conj text)
-  (reset! history-position (count @history))
+  (swap! history-atom post-to-history text)
   (append-dom log
     [:table
      [:tbody
@@ -106,23 +127,23 @@
     (set! (.-selectionStart input) n)
     (set! (.-selectionEnd input) n)))
 
-(defn bump-history [ev input change-fn]
-  (let [cur-hist (get @history @history-position)]
-    (when (not= cur-hist (.-value input))
-      (reset! history-position (count @history))))
-  (swap! history-position change-fn)
-  (set! (.-value input) (get @history @history-position))
+(defn nav-history! [ev input inc-or-dec]
+  (let [input-val (.-value input)]
+    (set! (.-value input)
+          (current-history
+            (swap! history-atom
+                   bump-history input-val inc-or-dec))))
   (.preventDefault ev)
   (move-cursor-to-end input))
 
 (defn handle-up-key [ev input]
   (when (zero? (cursor-line-number input))
-    (bump-history ev input #(max 0 (dec %)))))
+    (nav-history! ev input dec)))
 
 (defn handle-down-key [ev input]
   (when (= (inc (cursor-line-number input))
            (count-lines (.-value input)))
-    (bump-history ev input #(min (inc %) (count @history)))))
+    (nav-history! ev input inc)))
 
 (set! (.-onload js/window) (fn []
   (let [log (.getElementById js/document "log")
