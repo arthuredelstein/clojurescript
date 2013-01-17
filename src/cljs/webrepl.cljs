@@ -142,10 +142,10 @@
     (pep log "(sqr 8)")
     (pep log "(defmacro unless [pred a b] `(if (not ~pred) ~a ~b))")
     (pep log "(unless false :yep :nope)")
-    
-    (set! (.-onkeydown input)
+
+    (set! (.-onkeypress input)
           (fn [ev]
-            (condp == (or (.-keyCode ev) (.-which ev))
+            (condp == (.-keyCode (or ev event))
               13 (handle-enter-key log status1 status2 input)
               38 (handle-up-key ev input)
               40 (handle-down-key ev input)
