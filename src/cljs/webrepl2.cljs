@@ -44,7 +44,15 @@
     out))
 
 (defn- on-validate [input]
-  (not (empty? input)))
+  (and
+    (not (empty? input))
+    (try
+      (reader/read-string input)
+      true
+    (catch js/Error e
+                    (if (re-find #"EOF while reading" (.-message e))
+                      false
+                      (throw e))))))
 
 (defn- build-msg
   [title msg klass]
