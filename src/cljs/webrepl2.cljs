@@ -17,7 +17,7 @@
 (defn ep [text]
   (try
     (let [env (assoc (ana/empty-env) :context :expr)
-          form (read-next-form text)
+          form (read-next-form (str "(do\n" text "\n)"))
           _ (when *debug* (println "READ:" (pr-str form)))
           body (ana/analyze env form)
           _ (when *debug* (println "ANALYZED:" (pr-str (:form body))))
@@ -36,7 +36,6 @@
  (.promptText js/jconsole text)
  (.commandTrigger js/jconsole))
 
-
 (defn- map->js [m]
   (let [out (js-obj)]
     (doseq [[k v] m]
@@ -49,10 +48,10 @@
     (try
       (reader/read-string input)
       true
-    (catch js/Error e
-                    (if (re-find #"EOF while reading" (.-message e))
-                      false
-                      (throw e))))))
+      (catch js/Error e
+             (if (re-find #"EOF while reading" (.-message e))
+               false
+               (throw e))))))
 
 (defn- build-msg
   [title msg klass]
@@ -74,12 +73,21 @@
           compiled (ep input)]
       (if-let [err (and compiled (:error compiled))]
         (build-msg "Compilation error: " err "jquery-console-message-error")
-
         (try
           (.promptLabel js/jconsole (prompt))
           (build-msg "" (pr-str (:value compiled)) "jquery-console-message-value")
           (catch js/Error e
             (build-msg "Compilation error: " e "jquery-console-message-error"))))))
+
+
+(defn evaluate-file [editor]
+  (ep (.getValue editor)))
+
+(defn setup-editor []
+  (.fromTextArea js/CodeMirror (.getElementById js/document "editor")
+                 (map->js {:mode "clojure"
+                           :lineNumbers true
+                           :extraKeys (map->js {"Cmd-E" evaluate-file})})))
 
 (.ready (js/jQuery js/document)
   (fn []
@@ -99,6 +107,9 @@
                             :animateScroll true
                             :promptHistory true})))
     (set! *print-fn* #(.message js/jconsole (clojure.string/trim %)))
+
+    ;; setup the editor
+    (def editor (setup-editor))
 
     ;; print,evaluate,print some example forms
     (pep "(+ 1 2)")
