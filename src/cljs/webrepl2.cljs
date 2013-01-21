@@ -79,15 +79,23 @@
           (catch js/Error e
             (build-msg "Compilation error: " e "jquery-console-message-error"))))))
 
+(defn store-file-text [key text]
+  (-> js/window .-localStorage (.setItem key text)))
+
+(defn load-file-text [key]
+  (-> js/window .-localStorage (.getItem key)))
 
 (defn evaluate-file [editor]
-  (ep (.getValue editor)))
+  (ep (.getValue editor))
+  (store-file-text "scratch" (.getValue editor)))
 
 (defn setup-editor []
-  (.fromTextArea js/CodeMirror (.getElementById js/document "editor")
-                 (map->js {:mode "clojure"
-                           :lineNumbers true
-                           :extraKeys (map->js {"Cmd-E" evaluate-file})})))
+  (doto
+    (.fromTextArea js/CodeMirror (.getElementById js/document "editor")
+                   (map->js {:mode "clojure"
+                             :lineNumbers true
+                             :extraKeys (map->js {"Cmd-E" evaluate-file})}))
+    (.setValue (load-file-text "scratch"))))
 
 (.ready (js/jQuery js/document)
   (fn []
