@@ -95,7 +95,8 @@
                    (map->js {:mode "clojure"
                              :lineNumbers true
                              :matchBrackets true
-                             :extraKeys (map->js {"Cmd-E" evaluate-file})}))
+                             :extraKeys (map->js {"Cmd-E" evaluate-file
+                                                  "Ctrl-E" evaluate-file})}))
     (.setValue (load-file-text "scratch"))))
 
 (.ready (js/jQuery js/document)
