@@ -94,6 +94,7 @@
     (.fromTextArea js/CodeMirror (.getElementById js/document "editor")
                    (map->js {:mode "clojure"
                              :lineNumbers true
+                             :matchBrackets true
                              :extraKeys (map->js {"Cmd-E" evaluate-file})}))
     (.setValue (load-file-text "scratch"))))
 

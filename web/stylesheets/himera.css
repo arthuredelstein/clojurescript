@@ -98,9 +98,9 @@ ul.footer-links {
 
 /* Console --------------------------------------------- */
 
-#console {i
+#console {
   position: relative;
-  height: 320px;
+  height: 220px;
   background: #fbfbf8;
   border-radius: 5px;
   -moz-border-radius: 5px;
@@ -109,7 +109,7 @@ ul.footer-links {
 
 #console div.jquery-console-inner { 
   /*width:580px;*/
-  height:300px; 
+  height:200px; 
   margin: 10px 10px;
   overflow:auto; 
   text-align:left;
