@@ -15,7 +15,7 @@
 (defn evaluate-code [text]
   (try
     (let [env (assoc (ana/empty-env) :context :expr)
-          form (read-next-form text)
+          form (read-next-form (str "(do\n" text "\n)"))
           _ (when *debug* (println "READ:" (pr-str form)))
           body (ana/analyze env form)
           _ (when *debug* (println "ANALYZED:" (pr-str (:form body))))
@@ -65,6 +65,32 @@
                 false
                 0))))
 
+(defn store-file-text [key text]
+  (-> js/window .-localStorage (.setItem key text)))
+
+(defn load-file-text [key]
+  (-> js/window .-localStorage (.getItem key)))
+
+(defn evaluate-file [editor]
+  (evaluate-code (.getValue editor))
+  (store-file-text "scratch" (.getValue editor)))
+
+(defn- map->js [m]
+  (let [out (js-obj)]
+    (doseq [[k v] m]
+      (aset out (name k) v))
+    out))
+
+(defn setup-editor []
+  (doto
+    (.fromTextArea js/CodeMirror
+                   (.getElementById js/document "editor")
+                   (map->js {:mode "clojure"
+                             :lineNumbers true
+                             :matchBrackets true
+                             :extraKeys (map->js {"Cmd-E" evaluate-file})}))
+    (.setValue (load-file-text "scratch"))))
+
 (.ready (js/jQuery js/document)
   (fn []
     ;; Bootstrap an empty version of the cljs.user namespace
@@ -81,6 +107,8 @@
     (.SetIndentWidth js/jqconsole 1)
     (set! *print-fn* #(.Write js/jqconsole %))
     (start-prompt)
+    
+    (setup-editor)
 
     ;; print,evaluate,print some example forms
     ;(pep "(+ 1 2)")
