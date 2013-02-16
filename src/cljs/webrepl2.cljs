@@ -51,16 +51,20 @@
     (catch js/Error e
            (not (re-find #"EOF while reading" (.-message e))))))
 
+(defn respond-to-input [input]
+  (let [msg (handle-input input)]
+    ;(js/alert (pr-str msg))
+    (.Write js/jqconsole (:msg msg) (:className msg))))
+
 (defn start-prompt []
   (let [prompt-label (str "\n" (prompt))
         continue-label (str (apply str (repeat (- (count prompt-label) 5) " "))
-                            "... ")]
+                            "...")]
     (.SetPromptLabel js/jqconsole prompt-label continue-label)
     (.Prompt js/jqconsole "true"
              (fn [input]
-               (let [msg (handle-input input)]
-                 (.Write js/jqconsole (:msg msg) (:className msg))
-                 (start-prompt)))
+               (respond-to-input input)  
+               (start-prompt))
              #(if (complete-form? %)
                 false
                 0))))
@@ -72,8 +76,12 @@
   (-> js/window .-localStorage (.getItem key)))
 
 (defn evaluate-file [editor]
-  (evaluate-code (.getValue editor))
-  (store-file-text "scratch" (.getValue editor)))
+  (let [text (.getValue editor)]
+    (.AbortPrompt js/jqconsole)
+    (.Write js/jqconsole "\n\nEvaluating file...\n" "jqconsole-output")
+    (respond-to-input text)
+    (store-file-text "scratch" text))i
+  (start-prompt))
 
 (defn- map->js [m]
   (let [out (js-obj)]
@@ -108,7 +116,7 @@
     (set! *print-fn* #(.Write js/jqconsole %))
     (start-prompt)
     
-    (setup-editor)
+    (def e (setup-editor))
 
     ;; print,evaluate,print some example forms
     ;(pep "(+ 1 2)")
