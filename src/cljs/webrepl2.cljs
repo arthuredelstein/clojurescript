@@ -40,7 +40,8 @@
         (if-not (:finished output)
           (if-let [err (:error output)]
             (do (set! *e err)
-                output)
+                (assoc output :line-number
+                              (reader/get-line-number rdr)))
             (recur output))
           (do (set! *3 *2)
               (set! *2 *1)
@@ -52,14 +53,17 @@
   {:msg (str title msg)
    :className klass})
 
+(defn print-error [{:keys [error line-number]}]
+  (print error "at line" line-number))
+
 (defn handle-input [input]
-    (let [evaluated (evaluate-code input)]
-      (if-let [err (and evaluated (:error evaluated))]
-        (binding [*out* *err*] (print "Compilation error:" err))
-        (try
-          (binding [*out* *rtn*] (print (pr-str (:value evaluated))))
-          (catch js/Error e
-            (binding [*out* *err*] (println "Error:" err)))))))
+  (let [evaluated (evaluate-code input)]
+    (if (:error evaluated)
+      (binding [*out* *err*] (print-error evaluated))
+      (try
+        (binding [*out* *rtn*] (print (pr-str (:value evaluated))))
+        (catch js/Error e
+          (binding [*out* *err*] (println err)))))))
 
 (defn complete-form? [text]
   (try
