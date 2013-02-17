@@ -96,7 +96,7 @@
 (defn evaluate-file [editor]
   (let [text (.getValue editor)]
     (.AbortPrompt js/jqconsole)
-    (.Write js/jqconsole "\n\nEvaluating file...\n" "jqconsole-output")
+    (.Write js/jqconsole "Evaluating file...\n" "jqconsole-output")
     (respond-to-input text)
     (store-file-text "scratch" text))i
   (start-prompt))
