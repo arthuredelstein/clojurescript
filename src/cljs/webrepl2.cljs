@@ -73,7 +73,7 @@
 (defn start-prompt 
   ([initial-text]
     (let [prompt-label (str "\n" (prompt))
-          continue-label (str (apply str (repeat (- (count prompt-label) 5) " "))
+          continue-label (str (apply str (repeat (- (count prompt-label) 4) " "))
                               "...")]
       (.SetPromptLabel js/jqconsole prompt-label continue-label)
       (.Prompt js/jqconsole "true"
