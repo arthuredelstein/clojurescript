@@ -97,7 +97,7 @@
       
 (defn setup-console
   "Setup the REPL console."
-  []
+  [evaluate-file-callback]
   (set! js/jqconsole
         (.jqconsole (js/jQuery "#console")
                     "ClojureScript-in-ClojureScript Web REPL"
@@ -109,6 +109,8 @@
   (set! *rtn* #(.Write js/jqconsole % "jqconsole-output"))
   (set! *err* #(.Write js/jqconsole % "jqconsole-message-error"))
   (set! *print-fn* #(*out* %1))
+  ;; key binding
+  (.RegisterShortcut js/jqconsole "E" evaluate-file-callback)
   (start-prompt))
 
 ;; file storage
@@ -154,12 +156,12 @@
     (.provide js/goog "cljs.user")
     (set! cljs.core/*ns-sym* (symbol "cljs.user"))
     
-    ;; setup the REPL console
-    (setup-console)
     
-    ;; setup the editor
-    (def editor (setup-editor))
-
+    ;; setup the editor and console
+    (let [editor (setup-editor)]
+      (setup-console (fn [] (evaluate-file editor)))
+      (def editor editor))
+    
     ;; print,evaluate,print some example forms
     ;(pep "(+ 1 2)")
     ;(pep "(let [sqr #(* % %)] (sqr 8))")
