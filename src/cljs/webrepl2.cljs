@@ -4,7 +4,6 @@
             [cljs.reader :as reader]))
 
 (def ^:dynamic *debug* false)
-(def ^:dynamic *e nil)
 
 (defn prompt [] (str *ns-sym* "=> "))
 
@@ -56,11 +55,11 @@
 (defn handle-input [input]
     (let [evaluated (evaluate-code input)]
       (if-let [err (and evaluated (:error evaluated))]
-        (binding [*out* *err*] (print "Compilation error:" (.-stack err)))
+        (binding [*out* *err*] (print "Compilation error:" err))
         (try
           (binding [*out* *rtn*] (print (pr-str (:value evaluated))))
           (catch js/Error e
-            (binding [*out* *err*] (println "Error:" (.-stack err))))))))
+            (binding [*out* *err*] (println "Error:" err)))))))
 
 (defn complete-form? [text]
   (try
