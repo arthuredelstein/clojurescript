@@ -8,17 +8,11 @@
 
 (defn prompt [] (str *ns-sym* "=> "))
 
-(defn- read-next-form [text]
-  (binding [*ns-sym* *ns-sym*]
-    (reader/read-string text)))
-
-(defn read-forms [text]
-  (binding [*ns-sym* *ns-sym*]
-    (let [rdr (reader/string-reader text)]
-      (take-while #(not= % ::finished-reading)
-                  (repeatedly #(reader/read rdr false ::finished-reading))))))
-
-(defn evaluate-form [form]
+(defn evaluate-form
+  "Evaluates a clojure form. Returns a map, containing
+   either resulting value and emitted javascript, or
+   an error object."
+  [form]
   (try
     (let [env (assoc (ana/empty-env) :context :expr)
           body (ana/analyze env form)
@@ -26,18 +20,30 @@
           res (comp/emit-str body)
           _ (when *debug* (println "EMITTED:" (pr-str res)))
           value (js/eval res)]
-      (set! *3 *2)
-      (set! *2 *1)
-      (set! *1 value)
       {:value value :js res})
     (catch js/Error e
-      (set! *e e)
-      {:error (.-stack e)})))
+      {:error e})))
 
-(defn evaluate-code [text]
-  (let [_ (when *debug* (println "READ:" (pr-str form)))
-        form (read-next-form (str "(do\n" text "\n)"))]
-    (evaluate-form form)))
+(defn evaluate-code
+  "Evaluates some text from REPL input. If multiple forms are
+   present, evaluates in sequence until one throws an error
+   or the last form is reached. The result from the last
+   evaluated form is returned. *1, *2, *3, and *e are updated
+   appropriately." 
+  [text]
+  (let [rdr (reader/indexing-push-back-reader text)]
+    (loop [last-output nil]
+      (let [form (reader/read rdr false ::finished-reading)]
+        (if-not (= form ::finished-reading)
+          (let [output (evaluate-form form)]
+            (if-let [err (:error output)]
+              (do (set! *e err)
+                  output)
+              (recur output)))
+          (do (set! *3 *2)
+              (set! *2 *1)
+              (set! *1 (:value last-output))
+              last-output))))))
 
 (defn- build-msg
   [title msg klass]
@@ -47,11 +53,11 @@
 (defn handle-input [input]
     (let [evaluated (evaluate-code input)]
       (if-let [err (and evaluated (:error evaluated))]
-        (binding [*out* *err*] (print "Compilation error:" err))
+        (binding [*out* *err*] (print "Compilation error:" (.-stack err)))
         (try
           (binding [*out* *rtn*] (print (pr-str (:value evaluated))))
           (catch js/Error e
-            (binding [*out* *err*] (println "Error:" err)))))))
+            (binding [*out* *err*] (println "Error:" (.-stack err))))))))
 
 (defn complete-form? [text]
   (try
