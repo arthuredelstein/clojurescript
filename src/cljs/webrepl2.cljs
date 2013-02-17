@@ -102,6 +102,26 @@
                              :extraKeys (map->js {"Cmd-E" evaluate-file})}))
     (.setValue (load-file-text "scratch"))))
 
+(defn store-file-text [key text]
+  (-> js/window .-localStorage (.setItem key text)))
+
+(defn load-file-text [key]
+  (-> js/window .-localStorage (.getItem key)))
+
+(defn evaluate-file [editor]
+  (ep (.getValue editor))
+  (store-file-text "scratch" (.getValue editor)))
+
+(defn setup-editor []
+  (doto
+    (.fromTextArea js/CodeMirror (.getElementById js/document "editor")
+                   (map->js {:mode "clojure"
+                             :lineNumbers true
+                             :matchBrackets true
+                             :extraKeys (map->js {"Cmd-E" evaluate-file
+                                                  "Ctrl-E" evaluate-file})}))
+    (.setValue (load-file-text "scratch"))))
+
 (.ready (js/jQuery js/document)
   (fn []
     ;; Bootstrap an empty version of the cljs.user namespace
@@ -120,6 +140,9 @@
     (start-prompt)
     
     (def e (setup-editor))
+
+    ;; setup the editor
+    (def editor (setup-editor))
 
     ;; print,evaluate,print some example forms
     ;(pep "(+ 1 2)")
