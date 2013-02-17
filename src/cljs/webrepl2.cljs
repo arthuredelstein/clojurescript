@@ -25,7 +25,7 @@
               value (js/eval res)]
           {:value value :js res})))
     (catch js/Error e
-      {:error e})))
+      {:error e :line-number (reader/get-line-number rdr)})))
 
 (defn evaluate-code
   "Evaluates some text from REPL input. If multiple forms are
@@ -40,8 +40,7 @@
         (if-not (:finished output)
           (if-let [err (:error output)]
             (do (set! *e err)
-                (assoc output :line-number
-                              (reader/get-line-number rdr)))
+                output)
             (recur output))
           (do (set! *3 *2)
               (set! *2 *1)
