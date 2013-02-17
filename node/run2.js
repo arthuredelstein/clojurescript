@@ -11,7 +11,7 @@
         jsfile = path.resolve("./", targ);
 
     // Load the Closure Library wrapper
-    require('./out/goog.js');
+    require('./out2/goog.js');
     
     // Load the initial compiled file
     require(jsfile);

@@ -47,11 +47,11 @@
 (defn handle-input [input]
     (let [evaluated (evaluate-code input)]
       (if-let [err (and evaluated (:error evaluated))]
-        (build-msg "Compilation error: " err "jqconsole-message-error")
+        (binding [*out* *err*] (print "Compilation error:" err))
         (try
-          (build-msg "" (pr-str (:value evaluated)) "jqconsole-output")
+          (binding [*out* *rtn*] (print (pr-str (:value evaluated))))
           (catch js/Error e
-            (build-msg "Error: " e "jqconsole-message-error"))))))
+            (binding [*out* *err*] (println "Error:" err)))))))
 
 (defn complete-form? [text]
   (try
@@ -112,7 +112,7 @@
 (.ready (js/jQuery js/document)
   (fn []
     ;; Bootstrap an empty version of the cljs.user namespace
-    (swap! cljs.compiler/*emitted-provides* conj (symbol "cljs.user"))
+    (swap! comp/*emitted-provides* conj (symbol "cljs.user"))
     (.provide js/goog "cljs.user")
     (set! cljs.core/*ns-sym* (symbol "cljs.user"))
     
@@ -123,7 +123,13 @@
                       "\n>>> "
                       ""))
     (.SetIndentWidth js/jqconsole 1)
-    (set! *print-fn* #(.Write js/jqconsole %))
+
+    ;; Setup the print function
+    (set! *out* #(.Write js/jqconsole %))
+    (set! *rtn* #(.Write js/jqconsole % "jqconsole-output"))
+    (set! *err* #(.Write js/jqconsole % "jqconsole-message-error"))
+    (set! *print-fn* #(*out* %1))
+
     (start-prompt)
     
     ;; setup the editor
