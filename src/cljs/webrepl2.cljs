@@ -8,19 +8,23 @@
 
 (defn prompt [] (str *ns-sym* "=> "))
 
-(defn evaluate-form
-  "Evaluates a clojure form. Returns a map, containing
-   either resulting value and emitted javascript, or
-   an error object."
-  [form]
+(defn evaluate-next-form
+  "Evaluates next clojure form in reader. Returns a map, containing
+   either resulting value and emitted javascript, or an error
+   object, or {:finished true}."
+  [rdr]
   (try
-    (let [env (assoc (ana/empty-env) :context :expr)
-          body (ana/analyze env form)
-          _ (when *debug* (println "ANALYZED:" (pr-str (:form body))))
-          res (comp/emit-str body)
-          _ (when *debug* (println "EMITTED:" (pr-str res)))
-          value (js/eval res)]
-      {:value value :js res})
+    (let [form (reader/read rdr false ::finished-reading)
+          _ (when *debug* (println "READ:" (pr-str form)))]
+      (if (= form ::finished-reading)
+        {:finished true}
+        (let [env (assoc (ana/empty-env) :context :expr)
+              body (ana/analyze env form)
+              _ (when *debug* (println "ANALYZED:" (pr-str (:form body))))
+              res (comp/emit-str body)
+              _ (when *debug* (println "EMITTED:" (pr-str res)))
+              value (js/eval res)]
+          {:value value :js res})))
     (catch js/Error e
       {:error e})))
 
@@ -33,13 +37,12 @@
   [text]
   (let [rdr (reader/indexing-push-back-reader text)]
     (loop [last-output nil]
-      (let [form (reader/read rdr false ::finished-reading)]
-        (if-not (= form ::finished-reading)
-          (let [output (evaluate-form form)]
-            (if-let [err (:error output)]
-              (do (set! *e err)
-                  output)
-              (recur output)))
+      (let [output (evaluate-next-form rdr)]
+        (if-not (:finished output)
+          (if-let [err (:error output)]
+            (do (set! *e err)
+                output)
+            (recur output))
           (do (set! *3 *2)
               (set! *2 *1)
               (set! *1 (:value last-output))
