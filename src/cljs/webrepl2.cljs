@@ -73,21 +73,24 @@
 
 (defn respond-to-input [input]
   (let [msg (handle-input input)]
-    ;(js/alert (pr-str msg))
     (.Write js/jqconsole (:msg msg) (:className msg))))
 
-(defn start-prompt []
-  (let [prompt-label (str "\n" (prompt))
-        continue-label (str (apply str (repeat (- (count prompt-label) 5) " "))
-                            "...")]
-    (.SetPromptLabel js/jqconsole prompt-label continue-label)
-    (.Prompt js/jqconsole "true"
-             (fn [input]
-               (respond-to-input input)  
-               (start-prompt))
-             #(if (complete-form? %)
-                false
-                0))))
+(defn start-prompt 
+  ([initial-text]
+    (let [prompt-label (str "\n" (prompt))
+          continue-label (str (apply str (repeat (- (count prompt-label) 5) " "))
+                              "...")]
+      (.SetPromptLabel js/jqconsole prompt-label continue-label)
+      (.Prompt js/jqconsole "true"
+               (fn [input]
+                 (respond-to-input input)  
+                 (start-prompt))
+               #(if (complete-form? %)
+                  false
+                  0))
+      (when-not (empty? initial-text)
+        (.SetPromptText js/jqconsole initial-text))))
+  ([] (start-prompt nil)))
 
 (defn store-file-text [key text]
   (-> js/window .-localStorage (.setItem key text)))
@@ -96,12 +99,14 @@
   (-> js/window .-localStorage (.getItem key)))
 
 (defn evaluate-file [editor]
-  (let [text (.getValue editor)]
+  (let [text (.getValue editor)
+        prompt-text (.GetPromptText js/jqconsole false)]
+    (.ClearPromptText js/jqconsole)
     (.AbortPrompt js/jqconsole)
     (.Write js/jqconsole "Evaluating file...\n" "jqconsole-output")
     (respond-to-input text)
-    (store-file-text "scratch" text))i
-  (start-prompt))
+    (store-file-text "scratch" text)
+    (start-prompt prompt-text)))
 
 (defn- map->js [m]
   (let [out (js-obj)]
