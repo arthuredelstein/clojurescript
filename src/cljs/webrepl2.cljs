@@ -12,11 +12,9 @@
   (binding [*ns-sym* *ns-sym*]
     (reader/read-string text)))
 
-(defn evaluate-code [text]
+(defn evaluate-form [form]
   (try
     (let [env (assoc (ana/empty-env) :context :expr)
-          form (read-next-form (str "(do\n" text "\n)"))
-          _ (when *debug* (println "READ:" (pr-str form)))
           body (ana/analyze env form)
           _ (when *debug* (println "ANALYZED:" (pr-str (:form body))))
           res (comp/emit-str body)
@@ -29,6 +27,11 @@
     (catch js/Error e
       (set! *e e)
       {:error (.-stack e)})))
+
+(defn evaluate-code [text]
+  (let [_ (when *debug* (println "READ:" (pr-str form)))
+        form (read-next-form (str "(do\n" text "\n)"))]
+    (evaluate-form form)))
 
 (defn- build-msg
   [title msg klass]
