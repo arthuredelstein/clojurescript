@@ -5,7 +5,7 @@
 
 (def ^:dynamic *debug* false)
 
-(defn prompt [] (str *ns-sym* "=> "))
+;; handling user code inputs
 
 (defn evaluate-next-form
   "Evaluates next clojure form in reader. Returns a map, containing
@@ -47,11 +47,6 @@
               (set! *1 (:value last-output))
               last-output))))))
 
-(defn- build-msg
-  [title msg klass]
-  {:msg (str title msg)
-   :className klass})
-
 (defn print-error [{:keys [error line-number]}]
   (print error "at line" line-number))
 
@@ -71,9 +66,9 @@
     (catch js/Error e
            (not (re-find #"EOF while reading" (.-message e))))))
 
-(defn respond-to-input [input]
-  (let [msg (handle-input input)]
-    (.Write js/jqconsole (:msg msg) (:className msg))))
+;; console
+
+(defn prompt [] (str *ns-sym* "=> "))
 
 (defn start-prompt 
   ([initial-text]
@@ -83,7 +78,7 @@
       (.SetPromptLabel js/jqconsole prompt-label continue-label)
       (.Prompt js/jqconsole "true"
                (fn [input]
-                 (respond-to-input input)  
+                 (handle-input input)  
                  (start-prompt))
                #(if (complete-form? %)
                   false
@@ -92,19 +87,44 @@
         (.SetPromptText js/jqconsole initial-text))))
   ([] (start-prompt nil)))
 
+(defn cancel-input [message]
+  (let [prompt-text (.GetPromptText js/jqconsole false)]
+    (doto js/jqconsole
+      .ClearPromptText
+      .AbortPrompt
+      (.Write message "jqconsole-output"))
+    prompt-text))
+      
+(defn setup-console
+  "Setup the REPL console."
+  []
+  (set! js/jqconsole
+        (.jqconsole (js/jQuery "#console")
+                    "ClojureScript-in-ClojureScript Web REPL"
+                    "\n>>> "
+                    ""))
+  (.SetIndentWidth js/jqconsole 1)
+  ;; Setup the print function
+  (set! *out* #(.Write js/jqconsole %))
+  (set! *rtn* #(.Write js/jqconsole % "jqconsole-output"))
+  (set! *err* #(.Write js/jqconsole % "jqconsole-message-error"))
+  (set! *print-fn* #(*out* %1))
+  (start-prompt))
+
+;; file storage
+
 (defn store-file-text [key text]
   (-> js/window .-localStorage (.setItem key text)))
 
 (defn load-file-text [key]
   (-> js/window .-localStorage (.getItem key)))
 
+;; editor
+
 (defn evaluate-file [editor]
   (let [text (.getValue editor)
-        prompt-text (.GetPromptText js/jqconsole false)]
-    (.ClearPromptText js/jqconsole)
-    (.AbortPrompt js/jqconsole)
-    (.Write js/jqconsole "Evaluating file...\n" "jqconsole-output")
-    (respond-to-input text)
+        prompt-text (cancel-input "Evaluating file...\n")]
+    (handle-input text)
     (store-file-text "scratch" text)
     (start-prompt prompt-text)))
 
@@ -125,6 +145,8 @@
                                                   "Ctrl-E" evaluate-file})}))
     (.setValue (load-file-text "scratch"))))
 
+;; startup
+
 (.ready (js/jQuery js/document)
   (fn []
     ;; Bootstrap an empty version of the cljs.user namespace
@@ -133,20 +155,7 @@
     (set! cljs.core/*ns-sym* (symbol "cljs.user"))
     
     ;; setup the REPL console
-    (set! js/jqconsole
-          (.jqconsole (js/jQuery "#console")
-                      "ClojureScript-in-ClojureScript Web REPL"
-                      "\n>>> "
-                      ""))
-    (.SetIndentWidth js/jqconsole 1)
-
-    ;; Setup the print function
-    (set! *out* #(.Write js/jqconsole %))
-    (set! *rtn* #(.Write js/jqconsole % "jqconsole-output"))
-    (set! *err* #(.Write js/jqconsole % "jqconsole-message-error"))
-    (set! *print-fn* #(*out* %1))
-
-    (start-prompt)
+    (setup-console)
     
     ;; setup the editor
     (def editor (setup-editor))
