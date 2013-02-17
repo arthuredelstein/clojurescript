@@ -12,6 +12,12 @@
   (binding [*ns-sym* *ns-sym*]
     (reader/read-string text)))
 
+(defn read-forms [text]
+  (binding [*ns-sym* *ns-sym*]
+    (let [rdr (reader/string-reader text)]
+      (take-while #(not= % ::finished-reading)
+                  (repeatedly #(reader/read rdr false ::finished-reading))))))
+
 (defn evaluate-form [form]
   (try
     (let [env (assoc (ana/empty-env) :context :expr)
