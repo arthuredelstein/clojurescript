@@ -147,19 +147,22 @@
 (defn mac? []
   (.contains (.-platform js/navigator) "Mac"))
 
+(def command-prefix (if (mac?) "Cmd" "Ctrl"))
+
 (defn setup-editor []
-  (.html ($ "#tiny-note")
-         (str "Press " (if (mac?) "Cmd" "Ctrl")
-              "+E to evaluate file in REPL."))
+  (let [eval-cmd (str command-prefix "-E")]
+    (.html ($ "#tiny-note")
+           (str "Press " eval-cmd
+                " to evaluate file in REPL."))
   (doto
     (.fromTextArea js/CodeMirror
                    (.getElementById js/document "editor")
                    (map->js {:mode "clojure"
                              :lineNumbers true
                              :matchBrackets true
-                             :extraKeys (map->js {"Cmd-E" evaluate-file
-                                                  "Ctrl-E" evaluate-file})}))
-    (.setValue (load-item "scratch"))))
+                             :extraKeys (map->js {eval-cmd
+                                                  evaluate-file})}))
+    (.setValue (load-item "scratch")))))
 
 ;; show/hide editor
   
