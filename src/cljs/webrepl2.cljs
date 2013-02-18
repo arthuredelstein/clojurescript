@@ -140,8 +140,8 @@
       (aset out (name k) v))
     out))
 
-(defn str-contains? [x]
-  (not= (.indexOf x) -1))
+(defn str-contains? [s x]
+  (not= (.indexOf s x) -1))
 
 (defn mac? []
   (str-contains? (str (.-platform js/navigator)) "Mac"))
