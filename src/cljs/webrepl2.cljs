@@ -140,8 +140,11 @@
       (aset out (name k) v))
     out))
 
+(defn str-contains? [x]
+  (not= (.indexOf x) -1))
+
 (defn mac? []
-  (.contains (str (.-platform js/navigator)) "Mac"))
+  (str-contains? (str (.-platform js/navigator)) "Mac"))
 
 (def command-prefix (if (mac?) "Cmd" "Ctrl"))
 
