@@ -141,7 +141,7 @@
     out))
 
 (defn mac? []
-  (.contains (.-platform js/navigator) "Mac"))
+  (.contains (str (.-platform js/navigator)) "Mac"))
 
 (def command-prefix (if (mac?) "Cmd" "Ctrl"))
 
