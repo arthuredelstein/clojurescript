@@ -7,11 +7,7 @@
 
 ;; jquery
 
-(defn $ [x]
-  (js/jQuery. x))
-
-(defn visible? [element]
-  (.is ($ element) ":visible"))  
+(def $ js/$)
 
 ;; handling user code inputs
 
