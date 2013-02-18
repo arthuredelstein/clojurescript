@@ -153,15 +153,15 @@
     (.html ($ "#tiny-note")
            (str "Press " eval-cmd
                 " to evaluate file in REPL."))
-  (doto
-    (.fromTextArea js/CodeMirror
-                   (.getElementById js/document "editor")
-                   (map->js {:mode "clojure"
-                             :lineNumbers true
-                             :matchBrackets true
-                             :extraKeys (map->js {eval-cmd
-                                                  evaluate-file})}))
-    (.setValue (load-item "scratch")))))
+    (doto
+      (.fromTextArea js/CodeMirror
+                     (.getElementById js/document "editor")
+                     (map->js {:mode "clojure"
+                               :lineNumbers true
+                               :matchBrackets true
+                               :extraKeys (map->js {eval-cmd
+                                                    evaluate-file})}))
+    (.setValue (or (load-item "scratch") ";; Develop your clojurescript program here")))))
 
 ;; show/hide editor
   
