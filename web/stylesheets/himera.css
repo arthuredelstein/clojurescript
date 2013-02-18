@@ -85,6 +85,10 @@ ul.footer-links {
   color: #333;
 }
 
+.tiny-note {
+  font-size: small;
+}
+
 /* Editor ---------------------------------------------- */
 
 .CodeMirror {

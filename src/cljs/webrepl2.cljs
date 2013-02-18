@@ -144,6 +144,9 @@
       (aset out (name k) v))
     out))
 
+(defn mac? []
+  (.contains (.-platform js/navigator) "Mac"))
+
 (defn setup-editor []
   (doto
     (.fromTextArea js/CodeMirror
@@ -153,7 +156,10 @@
                              :matchBrackets true
                              :extraKeys (map->js {"Cmd-E" evaluate-file
                                                   "Ctrl-E" evaluate-file})}))
-    (.setValue (load-item "scratch"))))
+    (.setValue (load-item "scratch")))i
+  (.html ($ "#tiny-note") 
+         (str "Press " (if (mac?) "Cmd" "Ctrl")
+              "+E to evaluate file in REPL.")))
 
 ;; show/hide editor
   
