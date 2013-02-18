@@ -5,6 +5,14 @@
 
 (def ^:dynamic *debug* false)
 
+;; jquery
+
+(defn $ [x]
+  (js/jQuery. x))
+
+(defn visible? [element]
+  (.is ($ element) ":visible"))  
+
 ;; handling user code inputs
 
 (defn evaluate-next-form
@@ -99,7 +107,7 @@
   "Setup the REPL console."
   [evaluate-file-callback]
   (set! js/jqconsole
-        (.jqconsole (js/jQuery "#console")
+        (.jqconsole ($ "#console")
                     "ClojureScript-in-ClojureScript Web REPL"
                     "\n>>> "
                     ""))
@@ -115,10 +123,10 @@
 
 ;; file storage
 
-(defn store-file-text [key text]
+(defn store-item [key text]
   (-> js/window .-localStorage (.setItem key text)))
 
-(defn load-file-text [key]
+(defn load-item [key]
   (-> js/window .-localStorage (.getItem key)))
 
 ;; editor
@@ -127,7 +135,7 @@
   (let [text (.getValue editor)
         prompt-text (cancel-input "Evaluating file...\n")]
     (handle-input text)
-    (store-file-text "scratch" text)
+    (store-item "scratch" text)
     (start-prompt prompt-text)))
 
 (defn- map->js [m]
@@ -145,23 +153,56 @@
                              :matchBrackets true
                              :extraKeys (map->js {"Cmd-E" evaluate-file
                                                   "Ctrl-E" evaluate-file})}))
-    (.setValue (load-file-text "scratch"))))
+    (.setValue (load-item "scratch"))))
+
+;; show/hide editor
+  
+(def editor-visible (atom false))
+
+(def editor-visible-key "__editor_visible")
+
+(defn update-editor-visibility [show?]
+  (let [container ($ "#editor-container")]
+    (if show?
+      (.slideDown container 100)
+      (.slideUp container 100))))
+
+(defn store-editor-visibility [show?]
+  (store-item editor-visible-key (str show?)))
+
+(defn update-link [show?]
+  (.html ($ "#toggle-editor")
+         (str (if show? "Hide" "Show")
+              " file editor")))
+
+(defn add-updating-watch [reference fun]
+  (add-watch reference fun (fn [_ _ _ value] (fun value))))
+
+(defn setup-editor-toggling []
+  (add-updating-watch editor-visible update-editor-visibility)
+  (add-updating-watch editor-visible store-editor-visibility)
+  (add-updating-watch editor-visible update-link)
+  (.click ($ "#toggle-editor") #(swap! editor-visible not))
+  (reset! editor-visible (= "true" (load-item editor-visible-key))))
 
 ;; startup
 
-(.ready (js/jQuery js/document)
+(.ready ($ js/document)
   (fn []
     ;; Bootstrap an empty version of the cljs.user namespace
     (swap! comp/*emitted-provides* conj (symbol "cljs.user"))
     (.provide js/goog "cljs.user")
     (set! cljs.core/*ns-sym* (symbol "cljs.user"))
-    
-    
-    ;; setup the editor and console
+
+     (setup-editor-toggling)
+   
+     ;; setup the editor and console
     (let [editor (setup-editor)]
       (setup-console (fn [] (evaluate-file editor)))
       (def editor editor))
-    
+
+
+
     ;; print,evaluate,print some example forms
     ;(pep "(+ 1 2)")
     ;(pep "(let [sqr #(* % %)] (sqr 8))")
